@@ -1,0 +1,1400 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  BookOpen, Award, Sparkles, Volume2, CheckCircle2, XCircle, 
+  RefreshCw, Trophy, Star, ArrowRight, Heart, Smile, Check, 
+  HelpCircle, ChevronRight, Play, Home, Zap, Feather, Compass,
+  Lock, Unlock, ShieldCheck, KeyRound, X
+} from 'lucide-react';
+
+// Main App Component
+export default function App() {
+  const [activeTab, setActiveTab] = useState('theory'); // theory, practice, creative, badges
+  const [theorySubTab, setTheorySubTab] = useState(1);
+  const [practiceGame, setPracticeGame] = useState(1);
+  
+  // Teacher Unlock State (Persisted in localStorage)
+  const [unlockedLessons, setUnlockedLessons] = useState(() => {
+    const saved = localStorage.getItem('tv2_unlocked_lessons');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    // Default: Only lesson 1 is unlocked
+    return {
+      1: true,
+      2: false,
+      3: false,
+      4: false
+    };
+  });
+
+  // Modal teacher password state
+  const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+
+  // Save unlocked status
+  useEffect(() => {
+    localStorage.setItem('tv2_unlocked_lessons', JSON.stringify(unlockedLessons));
+  }, [unlockedLessons]);
+
+  const toggleUnlockLesson = (id) => {
+    setUnlockedLessons(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const handleTeacherLogin = (e) => {
+    e.preventDefault();
+    if (passwordInput === '0111') {
+      setIsTeacherAuthenticated(true);
+      setPasswordError(false);
+      setPasswordInput('');
+    } else {
+      setPasswordError(true);
+    }
+  };
+  
+  // Gamification States
+  const [stars, setStars] = useState(0);
+  const [badges, setBadges] = useState({
+    vocabMaster: false,
+    sentenceExpert: false,
+    punctuationPro: false,
+    themeExplorer: false
+  });
+  
+  // Sound Synthesis helper
+  const speakText = (text) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      utterance.rate = 0.9;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  // Confetti effect on milestone
+  const triggerConfetti = () => {
+    const canvas = document.createElement('canvas');
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '9999';
+    document.body.appendChild(canvas);
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const pieces = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      size: Math.random() * 10 + 5,
+      color: ['#f43f5e', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
+      speedY: Math.random() * 3 + 2,
+      speedX: Math.random() * 2 - 1,
+      rotation: Math.random() * 360,
+      spin: Math.random() * 10 - 5
+    }));
+
+    let animationFrame;
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      pieces.forEach(p => {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotation += p.spin;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+        if (p.y < canvas.height) alive = true;
+      });
+
+      if (alive) {
+        animationFrame = requestAnimationFrame(animate);
+      } else {
+        document.body.removeChild(canvas);
+      }
+    };
+    animate();
+  };
+
+  const addStars = (amount) => {
+    setStars(prev => {
+      const newScore = prev + amount;
+      if (newScore >= 20 && !badges.vocabMaster) setBadges(b => ({ ...b, vocabMaster: true }));
+      if (newScore >= 40 && !badges.sentenceExpert) setBadges(b => ({ ...b, sentenceExpert: true }));
+      if (newScore >= 60 && !badges.punctuationPro) setBadges(b => ({ ...b, punctuationPro: true }));
+      if (newScore >= 80 && !badges.themeExplorer) setBadges(b => ({ ...b, themeExplorer: true }));
+      return newScore;
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-amber-50/60 font-sans text-slate-800 flex flex-col selection:bg-amber-200">
+      {/* Top Header Nav */}
+      <header className="bg-white border-b-4 border-amber-300 shadow-sm sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-amber-400 rounded-2xl flex items-center justify-center shadow-md transform rotate-3 text-2xl">
+              📚
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-black tracking-tight text-amber-700 uppercase">
+                Tiếng Việt 2 - HK1
+              </h1>
+              <p className="text-xs font-semibold text-slate-500">Học vui vẻ - Hiểu thật sâu!</p>
+            </div>
+          </div>
+
+          {/* Right Header Items */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-gradient-to-r from-amber-100 to-yellow-200 px-4 py-2 rounded-full border-2 border-amber-400 shadow-inner">
+              <Star className="w-6 h-6 fill-amber-400 text-amber-500 animate-bounce" />
+              <span className="font-extrabold text-amber-900 text-lg">{stars}</span>
+              <span className="text-xs font-bold text-amber-700 uppercase hidden sm:inline">Sao thưởng</span>
+            </div>
+
+            {/* Teacher Button */}
+            <button
+              onClick={() => setShowTeacherModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 text-white rounded-full font-bold text-xs hover:bg-slate-700 transition shadow-sm"
+            >
+              <KeyRound className="w-4 h-4 text-amber-400" />
+              <span>Dành cho Giáo viên</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="bg-amber-100/70 border-t border-amber-200">
+          <div className="max-w-6xl mx-auto px-4 flex justify-around md:justify-start gap-2 md:gap-4 overflow-x-auto py-2">
+            {[
+              { id: 'theory', label: '1. Lý Thuyết & Ví Dụ', icon: BookOpen, color: 'text-blue-600' },
+              { id: 'practice', label: '2. Góc Luyện Tập', icon: Sparkles, color: 'text-emerald-600' },
+              { id: 'creative', label: '3. Góc Sáng Tạo', icon: Feather, color: 'text-purple-600' },
+              { id: 'badges', label: '4. Thành Tích', icon: Award, color: 'text-amber-600' }
+            ].map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm md:text-base transition-all whitespace-nowrap ${
+                    isActive 
+                      ? 'bg-white text-slate-900 shadow-md border-2 border-amber-400 transform -translate-y-0.5' 
+                      : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 ${tab.color}`} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6">
+        {activeTab === 'theory' && (
+          <TheorySection 
+            subTab={theorySubTab} 
+            setSubTab={setTheorySubTab} 
+            speakText={speakText} 
+            unlockedLessons={unlockedLessons}
+          />
+        )}
+        {activeTab === 'practice' && (
+          <PracticeSection 
+            game={practiceGame} 
+            setGame={setPracticeGame} 
+            addStars={addStars} 
+            triggerConfetti={triggerConfetti} 
+            speakText={speakText} 
+            unlockedLessons={unlockedLessons}
+          />
+        )}
+        {activeTab === 'creative' && (
+          <CreativeSection 
+            addStars={addStars} 
+            triggerConfetti={triggerConfetti} 
+            speakText={speakText} 
+          />
+        )}
+        {activeTab === 'badges' && (
+          <BadgesSection stars={stars} badges={badges} />
+        )}
+      </main>
+
+      {/* Teacher Modal Control */}
+      {showTeacherModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-slate-700 rounded-3xl max-w-md w-full p-6 shadow-2xl relative animate-scale-up">
+            <button
+              onClick={() => {
+                setShowTeacherModal(false);
+                setPasswordError(false);
+              }}
+              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-500"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {!isTeacherAuthenticated ? (
+              <form onSubmit={handleTeacherLogin} className="space-y-4 text-center">
+                <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
+                  🔐
+                </div>
+                <h3 className="text-xl font-black text-slate-800">Xác minh Giáo viên</h3>
+                <p className="text-sm font-medium text-slate-500">
+                  Vui lòng nhập mật khẩu quản trị để mở khóa quản lý nội dung bài học.
+                </p>
+
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value);
+                      setPasswordError(false);
+                    }}
+                    placeholder="Nhập mật khẩu..."
+                    className={`w-full text-center px-4 py-3 rounded-2xl border-2 font-bold text-lg focus:outline-hidden ${
+                      passwordError ? 'border-rose-500 bg-rose-50' : 'border-slate-300 focus:border-amber-400'
+                    }`}
+                    autoFocus
+                  />
+                  {passwordError && (
+                    <p className="text-xs font-bold text-rose-500">
+                      Mật khẩu không chính xác. Vui lòng thử lại!
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-amber-400 hover:bg-amber-500 text-amber-950 font-black py-3 rounded-2xl shadow-md transition"
+                >
+                  Xác nhận Quản trị
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between border-b pb-3">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-6 h-6 text-emerald-600" />
+                    <h3 className="font-extrabold text-slate-800 text-lg">Bảng Quản Lý Mở Khóa</h3>
+                  </div>
+                  <button
+                    onClick={() => setIsTeacherAuthenticated(false)}
+                    className="text-xs text-rose-600 font-bold hover:underline"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-600 font-medium">
+                  Bật công tắc để mở khóa nội dung tương ứng cho học sinh:
+                </p>
+
+                <div className="space-y-3">
+                  {[
+                    { id: 1, name: "Bài 1: Phân loại từ vựng" },
+                    { id: 2, name: "Bài 2: Mở rộng vốn từ (4 chủ điểm)" },
+                    { id: 3, name: "Bài 3: Các kiểu câu cơ bản" },
+                    { id: 4, name: "Bài 4: Dấu câu" }
+                  ].map(lesson => {
+                    const isUnlocked = unlockedLessons[lesson.id];
+                    return (
+                      <div
+                        key={lesson.id}
+                        className={`p-3.5 rounded-2xl border-2 flex items-center justify-between transition ${
+                          isUnlocked ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {isUnlocked ? (
+                            <Unlock className="w-5 h-5 text-emerald-600" />
+                          ) : (
+                            <Lock className="w-5 h-5 text-slate-400" />
+                          )}
+                          <span className="font-bold text-sm text-slate-800">{lesson.name}</span>
+                        </div>
+
+                        <button
+                          onClick={() => toggleUnlockLesson(lesson.id)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition shadow-2xs ${
+                            isUnlocked
+                              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                          }`}
+                        >
+                          {isUnlocked ? 'ĐÃ MỞ' : 'ĐANG KHÓA'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => setShowTeacherModal(false)}
+                    className="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-slate-700"
+                  >
+                    Đóng Bảng Quản Lý
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-amber-200 py-4 text-center text-xs text-slate-500">
+        <p className="font-medium">Chương trình Tiếng Việt Lớp 2 - Bộ Sách Kết Nối Tri Thức & Cánh Diều (Học kì 1)</p>
+        <p className="mt-1">Chúc các em học tốt và đạt nhiều điểm 10! 🌟</p>
+      </footer>
+    </div>
+  );
+}
+
+// Locked Lesson View Component
+function LockedLessonCard({ lessonName, onGoToFirst }) {
+  return (
+    <div className="bg-white border-2 border-dashed border-amber-300 rounded-3xl p-8 text-center space-y-4 max-w-xl mx-auto my-8 shadow-sm">
+      <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600 shadow-inner">
+        <Lock className="w-10 h-10" />
+      </div>
+      <h3 className="text-2xl font-black text-slate-800">
+        {lessonName || "Bài học đang tạm khóa"}
+      </h3>
+      <p className="text-slate-600 font-medium text-sm leading-relaxed">
+        Bài học này chưa được mở khóa. Hãy kiên nhẫn đợi thầy cô giáo mở khóa để học và ôn tập nhé! 🌸
+      </p>
+      {onGoToFirst && (
+        <button
+          onClick={onGoToFirst}
+          className="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-black px-6 py-3 rounded-2xl shadow-md transition"
+        >
+          Học Bài 1 (Đã Mở) 🚀
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ------------------- SECTION 1: LÝ THUYẾT & VÍ DỤ -------------------
+function TheorySection({ subTab, setSubTab, speakText, unlockedLessons }) {
+  const tabs = [
+    { id: 1, title: 'Phân loại từ vựng', emoji: '🏷️' },
+    { id: 2, title: 'Mở rộng vốn từ (4 Chủ điểm)', emoji: '📖' },
+    { id: 3, title: 'Các kiểu câu cơ bản', emoji: '💬' },
+    { id: 4, title: 'Dấu câu', emoji: '✍️' }
+  ];
+
+  const isCurrentTabUnlocked = unlockedLessons[subTab];
+
+  return (
+    <div className="space-y-6">
+      {/* Sub Tabs Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {tabs.map(t => {
+          const isUnlocked = unlockedLessons[t.id];
+          return (
+            <button
+              key={t.id}
+              onClick={() => setSubTab(t.id)}
+              className={`p-3 rounded-2xl font-bold flex items-center justify-center gap-2 border-2 transition-all relative ${
+                subTab === t.id
+                  ? 'bg-amber-400 text-amber-950 border-amber-500 shadow-md scale-102'
+                  : 'bg-white border-slate-200 text-slate-700 hover:border-amber-300 hover:bg-amber-50'
+              }`}
+            >
+              <span className="text-xl">{t.emoji}</span>
+              <span className="text-sm md:text-base">{t.title}</span>
+              {!isUnlocked && (
+                <Lock className="w-4 h-4 text-rose-500 shrink-0 ml-auto" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Render locked screen if current subtab is locked */}
+      {!isCurrentTabUnlocked ? (
+        <LockedLessonCard 
+          lessonName={tabs.find(t => t.id === subTab)?.title} 
+          onGoToFirst={() => setSubTab(1)} 
+        />
+      ) : (
+        <>
+          {/* Content 1: Phân loại từ vựng */}
+          {subTab === 1 && (
+            <div className="space-y-6">
+              <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl md:text-2xl font-extrabold text-emerald-900 flex items-center gap-2">
+                    📦 1. Từ Chỉ Sự Vật
+                  </h2>
+                  <button 
+                    onClick={() => speakText("Từ chỉ sự vật là những từ chỉ con người, đồ vật, con vật, cây cối, hiện tượng tự nhiên.")}
+                    className="p-2 bg-emerald-200 rounded-full hover:bg-emerald-300 transition"
+                    title="Nghe đọc"
+                  >
+                    <Volume2 className="w-5 h-5 text-emerald-800" />
+                  </button>
+                </div>
+                <p className="text-emerald-800 mb-4 text-base leading-relaxed font-medium">
+                  👉 <strong className="font-bold">Khái niệm:</strong> Là những từ dùng để gọi tên con người, đồ vật, con vật, cây cối, hoặc các hiện tượng tự nhiên xung quanh ta.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {[
+                    { type: '🧑 Con người', items: ['thầy giáo', 'học sinh', 'bố mẹ', 'bác sĩ'], color: 'bg-blue-100 border-blue-300 text-blue-900' },
+                    { type: '🎒 Đồ vật', items: ['bàn ghế', 'sách vở', 'bút chì', 'cặp sách'], color: 'bg-yellow-100 border-yellow-300 text-yellow-900' },
+                    { type: '🐱 Con vật', items: ['chó', 'mèo', 'gà', 'trâu', 'voi'], color: 'bg-orange-100 border-orange-300 text-orange-900' },
+                    { type: '🌴 Cây cối', items: ['cây bàng', 'hoa hồng', 'cây chuối'], color: 'bg-emerald-100 border-emerald-300 text-emerald-900' },
+                    { type: '⛈️ Hiện tượng', items: ['mưa', 'nắng', 'gió', 'sấm chớp'], color: 'bg-purple-100 border-purple-300 text-purple-900' }
+                  ].map((cat, idx) => (
+                    <div key={idx} className={`p-4 rounded-2xl border-2 ${cat.color}`}>
+                      <h4 className="font-extrabold text-lg mb-2">{cat.type}</h4>
+                      <ul className="list-disc list-inside space-y-1 font-medium text-sm">
+                        {cat.items.map((item, i) => (
+                          <li key={i} className="cursor-pointer hover:underline" onClick={() => speakText(item)}>
+                            {item} 🔊
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Hoạt động */}
+                <div className="bg-sky-50 border-2 border-sky-300 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-xl font-extrabold text-sky-900 flex items-center gap-2">
+                      🏃 2. Từ Chỉ Hoạt Động
+                    </h2>
+                    <button 
+                      onClick={() => speakText("Từ chỉ hoạt động là những từ chỉ sự vận động, hành động của người hoặc vật mà mắt ta nhìn thấy được.")}
+                      className="p-2 bg-sky-200 rounded-full hover:bg-sky-300"
+                    >
+                      <Volume2 className="w-5 h-5 text-sky-800" />
+                    </button>
+                  </div>
+                  <p className="text-sky-800 mb-4 text-sm font-medium">
+                    👉 <strong className="font-bold">Khái niệm:</strong> Là từ chỉ cử động, hành động của con người hoặc con vật.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {['đi', 'chạy', 'nhảy', 'đọc', 'viết', 'nói', 'cười', 'quét nhà', 'tưới cây', 'bay', 'bơi'].map((word, idx) => (
+                      <span 
+                        key={idx} 
+                        onClick={() => speakText(word)}
+                        className="bg-white border-2 border-sky-300 px-3 py-1.5 rounded-xl text-sky-900 font-bold text-sm shadow-sm cursor-pointer hover:bg-sky-200 transition"
+                      >
+                        {word} 🔊
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Đặc điểm */}
+                <div className="bg-pink-50 border-2 border-pink-300 rounded-3xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-xl font-extrabold text-pink-900 flex items-center gap-2">
+                      🎨 3. Từ Chỉ Đặc Điểm
+                    </h2>
+                    <button 
+                      onClick={() => speakText("Từ chỉ đặc điểm là từ chỉ màu sắc, hình dáng, kích thước, tính chất của sự vật.")}
+                      className="p-2 bg-pink-200 rounded-full hover:bg-pink-300"
+                    >
+                      <Volume2 className="w-5 h-5 text-pink-800" />
+                    </button>
+                  </div>
+                  <p className="text-pink-800 mb-4 text-sm font-medium">
+                    👉 <strong className="font-bold">Khái niệm:</strong> Dùng để tả màu sắc, hình dáng, kích thước, tính nét của người hoặc vật.
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-xs font-bold text-pink-700 block mb-1">Màu sắc:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['đỏ', 'xanh', 'vàng', 'trắng', 'tím'].map((w, i) => (
+                          <span key={i} onClick={() => speakText(w)} className="bg-white border border-pink-300 px-2.5 py-1 rounded-lg text-pink-900 text-xs font-bold cursor-pointer hover:bg-pink-100">
+                            {w}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-pink-700 block mb-1">Hình dáng, kích thước:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['to', 'nhỏ', 'dài', 'ngắn', 'tròn', 'vuông', 'cao', 'thấp'].map((w, i) => (
+                          <span key={i} onClick={() => speakText(w)} className="bg-white border border-pink-300 px-2.5 py-1 rounded-lg text-pink-900 text-xs font-bold cursor-pointer hover:bg-pink-100">
+                            {w}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-pink-700 block mb-1">Tính chất khác:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['chăm chỉ', 'ngoan ngoãn', 'hiền lành', 'thơm nức', 'ngọt ngào'].map((w, i) => (
+                          <span key={i} onClick={() => speakText(w)} className="bg-white border border-pink-300 px-2.5 py-1 rounded-lg text-pink-900 text-xs font-bold cursor-pointer hover:bg-pink-100">
+                            {w}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Content 2: Mở rộng vốn từ (4 Chủ điểm) */}
+          {subTab === 2 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                {
+                  id: 1,
+                  title: "1. Em là học sinh",
+                  badge: "Trường học",
+                  color: "border-blue-300 bg-blue-50/50 text-blue-900",
+                  headerBg: "bg-blue-400 text-white",
+                  desc: "Từ ngữ về trường học, đồ dùng học tập, hoạt động của học sinh.",
+                  examples: ["sách", "vở", "bút", "phấn", "thước kẻ", "học bài", "viết bài", "nghe giảng", "ra chơi"]
+                },
+                {
+                  id: 2,
+                  title: "2. Đi học và đi chơi",
+                  badge: "Hoạt động & An toàn",
+                  color: "border-emerald-300 bg-emerald-50/50 text-emerald-900",
+                  headerBg: "bg-emerald-400 text-white",
+                  desc: "Từ ngữ về các hoạt động học tập, vui chơi, giải trí và an toàn giao thông.",
+                  examples: ["đá bóng", "nhảy dây", "cắm trại", "xem phim", "công viên", "đi bộ trên vỉa hè"]
+                },
+                {
+                  id: 3,
+                  title: "3. Mái ấm gia đình",
+                  badge: "Tình thân",
+                  color: "border-amber-300 bg-amber-50/50 text-amber-900",
+                  headerBg: "bg-amber-400 text-white",
+                  desc: "Từ ngữ về tình cảm gia đình, các thành viên và đồ dùng trong nhà.",
+                  examples: ["ông bà", "bố mẹ", "anh chị em", "yêu thương", "quan tâm", "chăm sóc", "tivi", "tủ lạnh", "bếp"]
+                },
+                {
+                  id: 4,
+                  title: "4. Bạn bè của em",
+                  badge: "Tình bạn",
+                  color: "border-purple-300 bg-purple-50/50 text-purple-900",
+                  headerBg: "bg-purple-400 text-white",
+                  desc: "Từ ngữ chỉ tình bạn, đặc điểm của người bạn tốt.",
+                  examples: ["bạn thân", "bạn học", "giúp đỡ", "sẻ chia", "đoàn kết", "vui vẻ", "tốt bụng", "chân thành"]
+                }
+              ].map(theme => (
+                <div key={theme.id} className={`border-2 rounded-3xl overflow-hidden shadow-sm flex flex-col justify-between ${theme.color}`}>
+                  <div>
+                    <div className={`p-4 font-black flex items-center justify-between ${theme.headerBg}`}>
+                      <h3 className="text-xl">{theme.title}</h3>
+                      <span className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">{theme.badge}</span>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      <p className="font-medium text-sm text-slate-700 leading-relaxed">
+                        🎯 <strong>Nội dung:</strong> {theme.desc}
+                      </p>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Từ vựng tiêu biểu:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {theme.examples.map((ex, i) => (
+                            <button
+                              key={i}
+                              onClick={() => speakText(ex)}
+                              className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-sm font-bold shadow-xs hover:border-amber-400 hover:bg-amber-50 transition flex items-center gap-1"
+                            >
+                              {ex} <Volume2 className="w-3.5 h-3.5 text-slate-400" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Content 3: Các kiểu câu cơ bản */}
+          {subTab === 3 && (
+            <div className="space-y-6">
+              {[
+                {
+                  title: "1. Câu Giới Thiệu (Kiểu câu: Ai là gì?)",
+                  purpose: "Dùng để giới thiệu hoặc nhận định về một người, một vật.",
+                  structure: "Cú pháp thường có chữ 'là'.",
+                  examples: ["Em là học sinh lớp 2.", "Mẹ em là bác sĩ.", "Trường học là ngôi nhà thứ hai của em."],
+                  color: "border-indigo-300 bg-indigo-50/60 text-indigo-950",
+                  tagBg: "bg-indigo-200 text-indigo-900"
+                },
+                {
+                  title: "2. Câu Nêu Hoạt Động (Kiểu câu: Ai làm gì?)",
+                  purpose: "Dùng để kể về hành động, việc làm của người hoặc vật.",
+                  structure: "Cú pháp có từ chỉ hoạt động.",
+                  examples: ["Đàn chim đang bay về phương nam.", "Bé đang quét nhà giúp mẹ.", "Học sinh nghe cô giáo giảng bài."],
+                  color: "border-teal-300 bg-teal-50/60 text-teal-950",
+                  tagBg: "bg-teal-200 text-teal-900"
+                },
+                {
+                  title: "3. Câu Nêu Đặc Điểm (Kiểu câu: Ai thế nào?)",
+                  purpose: "Miêu tả đặc điểm, tính chất, hình dáng, màu sắc của người hoặc vật.",
+                  structure: "Cú pháp có từ chỉ đặc điểm.",
+                  examples: ["Mái tóc của bà bạc trắng.", "Bông hoa hồng đỏ thắm và thơm ngát.", "Bạn Lớp trưởng rất ngoan ngoãn."],
+                  color: "border-rose-300 bg-rose-50/60 text-rose-950",
+                  tagBg: "bg-rose-200 text-rose-900"
+                }
+              ].map((item, idx) => (
+                <div key={idx} className={`p-6 rounded-3xl border-2 shadow-sm ${item.color}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 className="text-xl font-extrabold">{item.title}</h3>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${item.tagBg}`}>Mẫu câu lớp 2</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-medium mb-4">
+                    <p>📌 <strong>Mục đích:</strong> {item.purpose}</p>
+                    <p>🛠️ <strong>Dấu hiệu nhận biết:</strong> {item.structure}</p>
+                  </div>
+                  <div className="bg-white/80 p-4 rounded-2xl border border-slate-200">
+                    <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Ví dụ ví dụ mẫu:</h4>
+                    <div className="space-y-2">
+                      {item.examples.map((ex, i) => (
+                        <div 
+                          key={i} 
+                          onClick={() => speakText(ex)} 
+                          className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs hover:border-amber-300 cursor-pointer"
+                        >
+                          <span className="font-semibold text-slate-800">✨ {ex}</span>
+                          <Volume2 className="w-4 h-4 text-slate-400" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Content 4: Dấu câu */}
+          {subTab === 4 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[
+                {
+                  symbol: ".",
+                  name: "Dấu chấm",
+                  color: "bg-blue-500 text-white",
+                  borderColor: "border-blue-300 bg-blue-50",
+                  rule: "Đặt ở cuối câu kể khi câu đã diễn đạt trọn vẹn một ý đầy đủ.",
+                  example: "Em rất thích học môn Tiếng Việt."
+                },
+                {
+                  symbol: "?",
+                  name: "Dấu chấm hỏi",
+                  color: "bg-amber-500 text-white",
+                  borderColor: "border-amber-300 bg-amber-50",
+                  rule: "Đặt ở cuối câu hỏi, dùng để hỏi về điều mình chưa biết.",
+                  example: "Hôm nay ai trực nhật lớp mình vậy?"
+                },
+                {
+                  symbol: ",",
+                  name: "Dấu phẩy",
+                  color: "bg-emerald-500 text-white",
+                  borderColor: "border-emerald-300 bg-emerald-50",
+                  rule: "Dùng để ngăn cách các từ cùng loại (cùng chỉ sự vật, hoạt động, đặc điểm) hoặc ngăn cách các bộ phận trong câu.",
+                  example: "Nhà em có chó, mèo và gà."
+                }
+              ].map((item, idx) => (
+                <div key={idx} className={`p-6 rounded-3xl border-2 flex flex-col justify-between ${item.borderColor}`}>
+                  <div>
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl font-black shadow-md ${item.color}`}>
+                        {item.symbol}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-slate-800">{item.name}</h3>
+                        <span className="text-xs text-slate-500 font-semibold">Quy tắc chuẩn</span>
+                      </div>
+                    </div>
+                    <p className="text-slate-700 text-sm font-medium mb-4 leading-relaxed">
+                      {item.rule}
+                    </p>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200">
+                    <span className="text-xs font-bold text-slate-400 block mb-1">Ví dụ:</span>
+                    <p 
+                      onClick={() => speakText(item.example)}
+                      className="text-sm font-bold text-slate-800 cursor-pointer hover:text-blue-600 flex items-center justify-between"
+                    >
+                      "{item.example}" <Volume2 className="w-4 h-4 text-slate-400 shrink-0" />
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ------------------- SECTION 2: GÓC LUYỆN TẬP -------------------
+function PracticeSection({ game, setGame, addStars, triggerConfetti, speakText, unlockedLessons }) {
+  const games = [
+    { id: 1, title: '🎮 1. Phân loại từ', lessonId: 1 },
+    { id: 2, title: '🎯 2. Nhận diện kiểu câu', lessonId: 3 },
+    { id: 3, title: '✍️ 3. Điền dấu câu', lessonId: 4 },
+    { id: 4, title: '🧩 4. Đố vui Chủ điểm', lessonId: 2 }
+  ];
+
+  const currentGameConfig = games.find(g => g.id === game);
+  const isGameUnlocked = unlockedLessons[currentGameConfig?.lessonId];
+
+  return (
+    <div className="space-y-6">
+      {/* Game selector */}
+      <div className="flex flex-wrap gap-2 border-b border-amber-200 pb-4">
+        {games.map(g => {
+          const unlocked = unlockedLessons[g.lessonId];
+          return (
+            <button
+              key={g.id}
+              onClick={() => setGame(g.id)}
+              className={`px-4 py-2.5 rounded-2xl font-extrabold text-sm transition-all flex items-center gap-1.5 ${
+                game === g.id
+                  ? 'bg-emerald-500 text-white shadow-md scale-105'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-emerald-50'
+              }`}
+            >
+              <span>{g.title}</span>
+              {!unlocked && <Lock className="w-3.5 h-3.5 text-rose-500" />}
+            </button>
+          );
+        })}
+      </div>
+
+      {!isGameUnlocked ? (
+        <LockedLessonCard 
+          lessonName={`Trò chơi ${currentGameConfig?.title}`} 
+          onGoToFirst={() => setGame(1)} 
+        />
+      ) : (
+        <>
+          {game === 1 && <VocabSortGame addStars={addStars} triggerConfetti={triggerConfetti} speakText={speakText} />}
+          {game === 2 && <SentenceTypeGame addStars={addStars} triggerConfetti={triggerConfetti} speakText={speakText} />}
+          {game === 3 && <PunctuationGame addStars={addStars} triggerConfetti={triggerConfetti} speakText={speakText} />}
+          {game === 4 && <TopicWordGame addStars={addStars} triggerConfetti={triggerConfetti} speakText={speakText} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+// Game 1: Phân loại từ vựng
+function VocabSortGame({ addStars, triggerConfetti, speakText }) {
+  const wordList = [
+    { word: 'bút chì', category: 'su_vat' },
+    { word: 'chạy bộ', category: 'hoat_dong' },
+    { word: 'ngoan ngoãn', category: 'dac_diem' },
+    { word: 'thầy giáo', category: 'su_vat' },
+    { word: 'tưới cây', category: 'hoat_dong' },
+    { word: 'đỏ thắm', category: 'dac_diem' },
+    { word: 'con mèo', category: 'su_vat' },
+    { word: 'đọc sách', category: 'hoat_dong' }
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [feedback, setFeedback] = useState(null);
+
+  const currentWord = wordList[currentIndex];
+
+  const handleClassify = (cat) => {
+    if (!currentWord) return;
+    speakText(currentWord.word);
+    
+    if (currentWord.category === cat) {
+      setFeedback({ type: 'correct', msg: 'Chính xác rồi! Tuyệt vời! 🎉 (+5 sao)' });
+      addStars(5);
+      setScore(score + 1);
+      if (currentIndex + 1 === wordList.length) {
+        triggerConfetti();
+      }
+    } else {
+      setFeedback({ type: 'wrong', msg: 'Chưa đúng rồi, hãy thử lại nhé! 💡' });
+    }
+
+    setTimeout(() => {
+      setFeedback(null);
+      if (currentIndex + 1 < wordList.length) {
+        setCurrentIndex(prev => prev + 1);
+      } else {
+        // Reset or finish
+      }
+    }, 1500);
+  };
+
+  const handleReset = () => {
+    setCurrentIndex(0);
+    setScore(0);
+    setFeedback(null);
+  };
+
+  return (
+    <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-emerald-300 shadow-md max-w-2xl mx-auto text-center space-y-6">
+      <div className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase">
+        <span>Câu hỏi: {currentIndex + 1} / {wordList.length}</span>
+        <span>Đã đúng: {score}</span>
+      </div>
+
+      <h3 className="text-xl font-extrabold text-emerald-900">
+        Hãy phân loại từ dưới đây vào đúng nhóm:
+      </h3>
+
+      {currentIndex < wordList.length ? (
+        <>
+          <div className="bg-emerald-50 border-4 border-dashed border-emerald-300 p-8 rounded-3xl my-4 inline-block shadow-inner w-full">
+            <span className="text-3xl md:text-4xl font-black text-emerald-800 tracking-wide">
+              "{currentWord.word}"
+            </span>
+          </div>
+
+          {feedback && (
+            <div className={`p-3 rounded-2xl font-bold text-sm animate-fade-in ${
+              feedback.type === 'correct' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+            }`}>
+              {feedback.msg}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            {[
+              { id: 'su_vat', label: '📦 Từ chỉ Sự vật', color: 'bg-blue-500 hover:bg-blue-600 text-white' },
+              { id: 'hoat_dong', label: '🏃 Từ chỉ Hoạt động', color: 'bg-amber-500 hover:bg-amber-600 text-white' },
+              { id: 'dac_diem', label: '🎨 Từ chỉ Đặc điểm', color: 'bg-pink-500 hover:bg-pink-600 text-white' }
+            ].map(btn => (
+              <button
+                key={btn.id}
+                disabled={!!feedback}
+                onClick={() => handleClassify(btn.id)}
+                className={`py-4 px-3 rounded-2xl font-extrabold shadow-md transform hover:-translate-y-1 transition ${btn.color} disabled:opacity-50`}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="space-y-4 py-6">
+          <div className="text-5xl">🏆</div>
+          <h4 className="text-2xl font-black text-emerald-800">Hoàn thành xuất sắc!</h4>
+          <p className="text-slate-600 font-medium">Bé đã phân loại đúng {score} / {wordList.length} từ vựng.</p>
+          <button
+            onClick={handleReset}
+            className="bg-emerald-500 text-white font-bold px-6 py-3 rounded-2xl hover:bg-emerald-600 shadow-md"
+          >
+            Chơi lại lần nữa 🔄
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Game 2: Nhận diện kiểu câu
+function SentenceTypeGame({ addStars, triggerConfetti, speakText }) {
+  const questions = [
+    { text: "Mẹ em là giáo viên mầm non.", type: "Ai là gì?" },
+    { text: "Chú chó cún đang nô đùa ngoài sân.", type: "Ai làm gì?" },
+    { text: "Bông hoa hướng dương có màu vàng rực rỡ.", type: "Ai thế nào?" },
+    { text: "Học sinh hào hứng nghe giảng bài.", type: "Ai làm gì?" },
+    { text: "Trường học của em rất rộng rãi và sạch đẹp.", type: "Ai thế nào?" }
+  ];
+
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [isDone, setIsDone] = useState(false);
+
+  const currentQ = questions[idx];
+
+  const handleAnswer = (answer) => {
+    setSelected(answer);
+    speakText(currentQ.text);
+    if (answer === currentQ.type) {
+      addStars(5);
+      if (idx + 1 === questions.length) {
+        triggerConfetti();
+      }
+    }
+  };
+
+  const handleNext = () => {
+    setSelected(null);
+    if (idx + 1 < questions.length) {
+      setIdx(idx + 1);
+    } else {
+      setIsDone(true);
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-sky-300 shadow-md max-w-2xl mx-auto space-y-6">
+      <div className="flex justify-between items-center text-xs font-bold text-slate-500">
+        <span>Câu hỏi {idx + 1} / {questions.length}</span>
+        <span className="text-sky-600">Kiểu câu cơ bản</span>
+      </div>
+
+      {!isDone ? (
+        <>
+          <div className="bg-sky-50 border-2 border-sky-200 p-6 rounded-2xl text-center">
+            <p className="text-xl md:text-2xl font-black text-sky-950 mb-2">
+              "{currentQ.text}"
+            </p>
+            <button 
+              onClick={() => speakText(currentQ.text)}
+              className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 bg-white px-3 py-1 rounded-full shadow-2xs hover:bg-sky-100"
+            >
+              <Volume2 className="w-3.5 h-3.5" /> Nghe đọc câu
+            </button>
+          </div>
+
+          <h4 className="font-extrabold text-slate-700 text-center">Câu trên thuộc kiểu câu nào?</h4>
+
+          <div className="space-y-3">
+            {["Ai là gì?", "Ai làm gì?", "Ai thế nào?"].map((option, i) => {
+              let btnStyle = "bg-slate-50 border-slate-200 text-slate-800 hover:bg-sky-50";
+              if (selected) {
+                if (option === currentQ.type) {
+                  btnStyle = "bg-emerald-500 border-emerald-600 text-white font-bold";
+                } else if (option === selected) {
+                  btnStyle = "bg-rose-500 border-rose-600 text-white font-bold";
+                }
+              }
+
+              return (
+                <button
+                  key={i}
+                  disabled={!!selected}
+                  onClick={() => handleAnswer(option)}
+                  className={`w-full p-4 rounded-2xl border-2 font-bold text-base text-left transition flex items-center justify-between ${btnStyle}`}
+                >
+                  <span>{option}</span>
+                  {selected && option === currentQ.type && <Check className="w-5 h-5" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {selected && (
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={handleNext}
+                className="bg-sky-500 hover:bg-sky-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-md"
+              >
+                Câu tiếp theo <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-8 space-y-4">
+          <div className="text-5xl">🎉</div>
+          <h4 className="text-2xl font-black text-sky-900">Tuyệt vời lắm!</h4>
+          <p className="text-slate-600">Bé đã hoàn thành xuất sắc phần nhận diện các kiểu câu.</p>
+          <button
+            onClick={() => { setIdx(0); setSelected(null); setIsDone(false); }}
+            className="bg-sky-500 text-white px-6 py-3 rounded-2xl font-bold hover:bg-sky-600"
+          >
+            Luyện tập lại 🔄
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Game 3: Điền dấu câu
+function PunctuationGame({ addStars, triggerConfetti, speakText }) {
+  const items = [
+    { textBefore: "Mẹ mua cho em sách", blank: ",", textAfter: " vở và bút chì." },
+    { textBefore: "Hôm nay thời tiết đẹp quá", blank: ".", textAfter: "" },
+    { textBefore: "Cậu có muốn đi chơi công viên không", blank: "?", textAfter: "" },
+    { textBefore: "Bạn Nam", blank: ",", textAfter: " bạn An đều là học sinh giỏi." }
+  ];
+
+  const [answers, setAnswers] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSelect = (idx, symbol) => {
+    setAnswers({ ...answers, [idx]: symbol });
+  };
+
+  const checkResults = () => {
+    setSubmitted(true);
+    let correctCount = 0;
+    items.forEach((item, idx) => {
+      if (answers[idx] === item.blank) correctCount++;
+    });
+    addStars(correctCount * 5);
+    if (correctCount === items.length) {
+      triggerConfetti();
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-purple-300 shadow-md max-w-2xl mx-auto space-y-6">
+      <h3 className="text-xl font-black text-purple-900 text-center">
+        ✍️ Chọn dấu câu thích hợp ( . , ? ) điền vào ô trống
+      </h3>
+
+      <div className="space-y-4">
+        {items.map((item, idx) => (
+          <div key={idx} className="p-4 rounded-2xl bg-purple-50/60 border border-purple-200 flex flex-wrap items-center gap-2 text-base md:text-lg font-bold text-slate-800">
+            <span>{idx + 1}. {item.textBefore}</span>
+            <div className="inline-flex gap-1">
+              {['.', ',', '?'].map(sym => (
+                <button
+                  key={sym}
+                  disabled={submitted}
+                  onClick={() => handleSelect(idx, sym)}
+                  className={`w-9 h-9 rounded-xl font-black text-lg border-2 transition ${
+                    answers[idx] === sym 
+                      ? 'bg-purple-600 text-white border-purple-700' 
+                      : 'bg-white border-slate-300 text-slate-700 hover:bg-purple-100'
+                  }`}
+                >
+                  {sym}
+                </button>
+              ))}
+            </div>
+            <span>{item.textAfter}</span>
+
+            {submitted && (
+              <span className="ml-auto text-sm">
+                {answers[idx] === item.blank ? (
+                  <span className="text-emerald-600 flex items-center gap-1 font-bold">
+                    <CheckCircle2 className="w-5 h-5" /> Đúng
+                  </span>
+                ) : (
+                  <span className="text-rose-500 font-bold">
+                    Đáp án đúng: '{item.blank}'
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="text-center pt-2">
+        {!submitted ? (
+          <button
+            onClick={checkResults}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-2xl font-black text-lg shadow-md"
+          >
+            Nộp bài & Kiểm tra 🚀
+          </button>
+        ) : (
+          <button
+            onClick={() => { setAnswers({}); setSubmitted(false); }}
+            className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2.5 rounded-xl font-bold"
+          >
+            Làm lại bài tập 🔄
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Game 4: Đố vui Chủ điểm
+function TopicWordGame({ addStars, triggerConfetti, speakText }) {
+  const topics = [
+    {
+      title: "Chủ điểm: Mái ấm gia đình 🏠",
+      question: "Từ nào dưới đây chỉ TÌNH CẢM trong gia đình?",
+      options: ["tủ lạnh", "yêu thương", "bếp gas"],
+      answer: "yêu thương"
+    },
+    {
+      title: "Chủ điểm: Em là học sinh 🎒",
+      question: "Đâu là từ chỉ ĐỒ DÙNG HỌC TẬP của học sinh?",
+      options: ["thước kẻ", "đá bóng", "công viên"],
+      answer: "thước kẻ"
+    },
+    {
+      title: "Chủ điểm: Bạn bè của em 🤝",
+      question: "Từ nào thể hiện ĐẶC ĐIỂM của một người bạn tốt?",
+      options: ["chân thành", "cặp sách", "xem phim"],
+      answer: "chân thành"
+    }
+  ];
+
+  const [current, setCurrent] = useState(0);
+  const [selected, setSelected] = useState(null);
+
+  const q = topics[current];
+
+  const handlePick = (opt) => {
+    setSelected(opt);
+    speakText(opt);
+    if (opt === q.answer) {
+      addStars(5);
+      if (current + 1 === topics.length) triggerConfetti();
+    }
+  };
+
+  return (
+    <div className="bg-white p-6 md:p-8 rounded-3xl border-2 border-amber-300 shadow-md max-w-2xl mx-auto space-y-6">
+      <div className="bg-amber-100 p-4 rounded-2xl font-bold text-amber-900 text-sm text-center">
+        {q.title}
+      </div>
+
+      <h3 className="text-xl font-extrabold text-slate-800 text-center">
+        {q.question}
+      </h3>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {q.options.map((opt, i) => {
+          let style = "bg-white border-slate-200 text-slate-800 hover:bg-amber-50";
+          if (selected) {
+            if (opt === q.answer) style = "bg-emerald-500 border-emerald-600 text-white font-bold";
+            else if (opt === selected) style = "bg-rose-500 border-rose-600 text-white font-bold";
+          }
+          return (
+            <button
+              key={i}
+              disabled={!!selected}
+              onClick={() => handlePick(opt)}
+              className={`p-4 rounded-2xl border-2 text-base font-bold shadow-xs transition ${style}`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+
+      {selected && (
+        <div className="flex justify-center pt-4">
+          {current + 1 < topics.length ? (
+            <button
+              onClick={() => { setCurrent(current + 1); setSelected(null); }}
+              className="bg-amber-500 text-white font-bold px-6 py-2.5 rounded-xl hover:bg-amber-600"
+            >
+              Câu tiếp theo ➡️
+            </button>
+          ) : (
+            <p className="font-extrabold text-emerald-600">🌟 Hoàn thành toàn bộ thử thách!</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ------------------- SECTION 3: GÓC SÁNG TẠO (GHÉP CÂU) -------------------
+function CreativeSection({ addStars, triggerConfetti, speakText }) {
+  const subjects = [
+    { text: "Em", category: "Ai" },
+    { text: "Mẹ em", category: "Ai" },
+    { text: "Chú chó Cún", category: "Cái gì/Con gì" },
+    { text: "Mái tóc của bà", category: "Cái gì" }
+  ];
+
+  const predicates = [
+    { text: "là học sinh lớp 2A", type: "Ai là gì?" },
+    { text: "đang tưới hoa trong vườn", type: "Ai làm gì?" },
+    { text: "rất đen và mượt mà", type: "Ai thế nào?" },
+    { text: "là người nấu ăn rất ngon", type: "Ai là gì?" }
+  ];
+
+  const [selectedSub, setSelectedSub] = useState(null);
+  const [selectedPred, setSelectedPred] = useState(null);
+  const [createdSentence, setCreatedSentence] = useState(null);
+
+  const handleCreateSentence = () => {
+    if (!selectedSub || !selectedPred) return;
+    const full = `${selectedSub.text} ${selectedPred.text}.`;
+    setCreatedSentence({
+      text: full,
+      type: selectedPred.type
+    });
+    addStars(10);
+    triggerConfetti();
+    speakText(full);
+  };
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white p-6 rounded-3xl shadow-lg">
+        <h2 className="text-2xl font-black mb-2 flex items-center gap-2">
+          ✨ Máy Ghép Câu Vui Nhộn
+        </h2>
+        <p className="text-purple-100 text-sm font-medium">
+          Hãy chọn 1 <strong>Chủ ngữ (Ai/Con gì/Cái gì)</strong> ghép với 1 <strong>Vị ngữ</strong> để tạo thành một câu hoàn chỉnh nhé!
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Step 1: Pick Subject */}
+        <div className="bg-white p-5 rounded-3xl border-2 border-purple-200 shadow-sm space-y-3">
+          <h3 className="font-extrabold text-purple-950 text-lg flex items-center gap-2">
+            1️⃣ Chọn Chủ ngữ (Ai / Con gì / Cái gì):
+          </h3>
+          <div className="space-y-2">
+            {subjects.map((sub, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedSub(sub)}
+                className={`w-full p-3.5 rounded-2xl font-bold border-2 text-left transition ${
+                  selectedSub?.text === sub.text 
+                    ? 'bg-purple-600 text-white border-purple-700 shadow-md' 
+                    : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-purple-50'
+                }`}
+              >
+                {sub.text}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Step 2: Pick Predicate */}
+        <div className="bg-white p-5 rounded-3xl border-2 border-indigo-200 shadow-sm space-y-3">
+          <h3 className="font-extrabold text-indigo-950 text-lg flex items-center gap-2">
+            2️⃣ Chọn Vị ngữ (Làm gì / Là gì / Thế nào):
+          </h3>
+          <div className="space-y-2">
+            {predicates.map((pred, i) => (
+              <button
+                key={i}
+                onClick={() => setSelectedPred(pred)}
+                className={`w-full p-3.5 rounded-2xl font-bold border-2 text-left transition ${
+                  selectedPred?.text === pred.text 
+                    ? 'bg-indigo-600 text-white border-indigo-700 shadow-md' 
+                    : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-indigo-50'
+                }`}
+              >
+                {pred.text}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Button Action */}
+      <div className="text-center pt-2">
+        <button
+          disabled={!selectedSub || !selectedPred}
+          onClick={handleCreateSentence}
+          className="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-amber-950 font-black text-lg px-8 py-3.5 rounded-2xl shadow-lg disabled:opacity-40 transition transform active:scale-95"
+        >
+          🚀 Ghép thành câu ngay!
+        </button>
+      </div>
+
+      {/* Result Card */}
+      {createdSentence && (
+        <div className="bg-emerald-50 border-4 border-emerald-400 p-6 rounded-3xl text-center space-y-3 animate-fade-in shadow-md">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-200 px-3 py-1 rounded-full">
+            Kiểu câu: {createdSentence.type}
+          </span>
+          <p className="text-2xl md:text-3xl font-black text-emerald-950">
+            "{createdSentence.text}"
+          </p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => speakText(createdSentence.text)}
+              className="bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1 hover:bg-emerald-700"
+            >
+              <Volume2 className="w-4 h-4" /> Nghe đọc câu
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ------------------- SECTION 4: THÀNH TÍCH & KHEN THƯỞNG -------------------
+function BadgesSection({ stars, badges }) {
+  const badgeList = [
+    { key: 'vocabMaster', title: 'Vua Từ Vựng', desc: 'Đạt từ 20 sao trở lên', emoji: '👑', color: 'bg-amber-100 border-amber-400 text-amber-900' },
+    { key: 'sentenceExpert', title: 'Bậc Thầy Kiểu Câu', desc: 'Đạt từ 40 sao trở lên', emoji: '🎓', color: 'bg-blue-100 border-blue-400 text-blue-900' },
+    { key: 'punctuationPro', title: 'Thánh Dấu Câu', desc: 'Đạt từ 60 sao trở lên', emoji: '✍️', color: 'bg-purple-100 border-purple-400 text-purple-900' },
+    { key: 'themeExplorer', title: 'Nhà Thông Thái HK1', desc: 'Đạt từ 80 sao trở lên', emoji: '🌟', color: 'bg-emerald-100 border-emerald-400 text-emerald-900' }
+  ];
+
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="bg-white p-6 rounded-3xl border-2 border-amber-300 text-center space-y-3 shadow-sm">
+        <Trophy className="w-16 h-16 text-amber-500 mx-auto animate-bounce" />
+        <h2 className="text-2xl font-black text-slate-800">Bảng Thành Tích Học Tập</h2>
+        <p className="text-slate-600 text-sm font-medium">
+          Tích lũy sao bằng cách hoàn thành các bài tập và trò chơi luyện tập nhé!
+        </p>
+
+        <div className="inline-flex items-center gap-2 bg-amber-400 text-amber-950 font-black px-6 py-2 rounded-full text-xl shadow-inner">
+          <Star className="fill-amber-950 w-6 h-6" /> Tổng sao hiện tại: {stars} 🌟
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {badgeList.map(b => {
+          const isUnlocked = badges[b.key];
+          return (
+            <div
+              key={b.key}
+              className={`p-5 rounded-3xl border-2 flex items-center gap-4 transition ${
+                isUnlocked 
+                  ? `${b.color} shadow-md` 
+                  : 'bg-slate-100 border-slate-300 text-slate-400 opacity-60'
+              }`}
+            >
+              <div className="text-4xl p-3 bg-white/80 rounded-2xl shadow-xs">{b.emoji}</div>
+              <div>
+                <h4 className="font-extrabold text-lg">{b.title}</h4>
+                <p className="text-xs font-semibold">{b.desc}</p>
+                <div className="mt-2">
+                  {isUnlocked ? (
+                    <span className="text-xs bg-emerald-500 text-white px-2.5 py-0.5 rounded-full font-bold">
+                      ✓ Đã mở khóa
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-slate-300 text-slate-700 px-2.5 py-0.5 rounded-full font-bold">
+                      🔒 Chưa mở khóa
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
